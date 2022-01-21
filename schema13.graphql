@@ -1,0 +1,3173 @@
+"""
+v6.06
+"""
+schema {
+    query: Query
+    mutation: Mutation
+}
+
+"""
+Represents an error type.
+"""
+interface Error {
+    """
+    Machine-readable error identifier.
+    """
+    errorCode: String!
+    """
+    Human-readable error description.
+    """
+    errorMessage: String
+}
+
+"""
+An object with an ID.
+"""
+interface Node {
+    """
+    The object belongs to a provider.
+    """
+    providerId: ID!
+    """
+    ID of the object.
+    """
+    id: ID!
+}
+
+"""
+Information about pagination in a connection.
+"""
+type PageInfo {
+    """
+    When paginating backwards, are there more items?
+    """
+    hasPreviousPage: Boolean!
+    """
+    When paginating forwards, are there more items?
+    """
+    hasNextPage: Boolean!
+    """
+    When paginating backwards, the cursor to continue.
+    """
+    startCursor: String
+    """
+    When paginating forwards, the cursor to continue.
+    """
+    endCursor: String
+}
+
+"""
+Possible period types for counters.
+"""
+enum CounterPeriodType {
+    """
+    Counter value is reset every month.
+    """
+    MONTHLY
+    """
+    Counter value is reset every day.
+    """
+    DAILY
+    """
+    Counter value is never reset.
+    """
+    NONE
+}
+
+"""
+Information when counter value must be reset.
+"""
+type CounterPeriod {
+    """
+    Determines a period when counter value must be reset.
+    """
+    type: CounterPeriodType!
+    """
+    Value expression, specific for the given period type - e.g. the hour to reset daily counter.
+    """
+    data: String!
+}
+
+"""
+List of name / value pairs used to determine the counter's current state.
+"""
+type CounterState {
+    """
+    Unique name of the counter's current state.
+    """
+    name: String!
+    """
+    Value expression used as the upper bound of the state - previous state threshold is the lower bound.
+    """
+    threshold: String
+}
+
+"""
+Counters provide a posibility to calculate spending values and change their states based on the calculations.
+Later on their state can be used to provide notifications to the customer.
+They enable other elements of the Provider’s core network to support real-time quality-of-service and other policies, even for post-paid offline transactions.
+"""
+type Counter {
+    """
+    Unique name for this Counter.
+    """
+    name: String!
+    """
+    Persistent counter saves its state between sessions, transient counter resets its state between sessions.
+    """
+    persistent: Boolean!
+    """
+    Determines when a counter is reset.
+    """
+    period: CounterPeriod
+    """
+    Boolean expression to determine if the current event should be counted.
+    """
+    selector: String
+    """
+    Value expression that will be used to increment the counter.
+    """
+    increment: String!
+    """
+    Possible states of the counter.
+    """
+    states: [CounterState!]!
+    """
+    Additional notification fields which are sent in notifications caused by this counter.
+    """
+    notificationFields: [String]
+}
+
+"""
+Information when counter value must be reset.
+"""
+input CounterPeriodInput {
+    """
+    Determines a period when counter value must be reset.
+    """
+    type: CounterPeriodType!
+    """
+    Value expression, specific for the given period type - e.g. the hour to reset daily counter.
+    The result of the expression could be either an integer or a date in AWSDateTime format.
+    """
+    data: String!
+}
+
+"""
+List of name / value pairs used to determine the counter's current state.
+"""
+input CounterStateInput {
+    """
+    Unique name of the counter's current state.
+    """
+    name: String!
+    """
+    Value expression used as the upper bound of the state - previous state threshold is the lower bound.
+    The result of the expression must be a number.
+    """
+    threshold: String
+}
+
+"""
+Parameters for counter creation.
+"""
+input CounterInput {
+    """
+    Unique name for this Counter. Must be between 1 and 50 characters and consist of letters, digits or special characters.
+    """
+    name: String!
+    """
+    Persistent counter saves its state between sessions, transient counter resets its state between sessions.
+    If not provided then considered as transient - false.
+    """
+    persistent: Boolean
+    """
+    Determines when a counter is reset.
+    If not provided then the counter is never reset and will be active while subscription is active.
+    """
+    period: CounterPeriodInput
+    """
+    Boolean expression to determine if the current event should be counted.
+    If not provided then all events are counted.
+    """
+    selector: String
+    """
+    Value expression that will be used to increment the counter.
+    The result of the expression must return a number.
+    """
+    increment: String!
+    """
+    Possible states of the counter.
+    """
+    states: [CounterStateInput!]!
+    """
+    Additional notification fields which are sent in notifications caused by this counter.
+    """
+    notificationFields: [String]
+}
+
+"""
+Input type of CreatePlan.
+"""
+input CreatePlanInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A new plan ID, if not provided then autogenerated.
+    """
+    id: ID
+    """
+    The name of the first version.
+    """
+    version: String!
+    """
+    A new plan human readable name.
+    """
+    name: String!
+    """
+    A list of plan services for the first version of a new plan.
+    """
+    planServices: [ID!]
+    """
+    List of counters for the first version of the plan.
+    """
+    counters: [CounterInput!]
+}
+
+"""
+Consists of times and days to make an overall period (e.g. Mon-Fri 09:00-18:00 as working hours period). It should have times specified or days specified or both.
+"""
+type TimePeriod {
+    """
+    A list of time intervals in a format of HH:mm-HH:mm (10:32-15:43) or hh24:mm-hh24:mm (10:32am-3:43pm).
+    """
+    times: [String!]
+    """
+    A list of week days.
+    """
+    days: [WeekDay!]
+}
+
+"""
+Rate configuration.
+"""
+type Rate {
+    """
+    Particular rate in units to be applied.
+    """
+    rate: Float!
+    """
+    Per unit rounding to be applied. If not specified default value is used.
+    """
+    perUnitRounding: Int
+    """
+    A tax rate to be applied.
+    """
+    taxRate: Float!
+}
+
+"""
+Rate configuration for roaming.
+"""
+type ExtendedRate {
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    aNumberCurrentCountryExpr: String!
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    bNumberHomeCountryExpr: String!
+    """
+    Rate configuration. If not provided means roaming for this origination is denied.
+    """
+    rate: Rate
+}
+
+"""
+All the parameters for each service in initial template.
+"""
+type InitialTemplateService {
+    """
+    Units that will be added to this service on a specified recurring period. If not specified it means that it is unlimited.
+    """
+    periodAllowance: Int
+    """
+    Default value for per unit rounding. It is used mainly for rounding units from periodAllowance. And also it is used when perUnitRounding for rates are not provided.
+    """
+    defaultUnitRounding: Int!
+    """
+    Overage rate configuration. If not specified it means that a service will be denied when all granted units are consumed.
+    """
+    overage: Rate
+    """
+    Rate configuration for off-peak hours. If not specified everything is rated as specified in overage.
+    """
+    offPeak: Rate
+    """
+    A list of free services (for voice it is a list of free numbers). If not specified it is considered empty.
+    """
+    free: [String!]
+    """
+    Roaming configuration.
+    """
+    roaming: [ExtendedRate!]
+    """
+    Long distance configuration.
+    """
+    longDistance: [ExtendedRate!]
+    """
+    Units threshold to define when to send a notification.
+    """
+    notificationAllowanceThreshold: Int
+}
+
+"""
+All the parameters with which initial template was used to create a plan.
+"""
+type InitialTemplateInstance {
+    """
+    A fee that will be charged per specified recurring period.
+    """
+    fee: Float!
+    """
+    A period when specified fee will be charged.
+    """
+    period: RecurringPeriod!
+    """
+    An action to perform with balances from a previous period. Rollover if true or reset if false.
+    """
+    rollover: Boolean!
+    """
+    A list of time periods used as off-peak times.
+    """
+    offPeakTimes: [TimePeriod!]
+    """
+    Rates for Voice service.
+    """
+    voice: InitialTemplateService
+    """
+    Rates for Data service.
+    """
+    data: InitialTemplateService
+    """
+    Rates for Text service.
+    """
+    text: InitialTemplateService
+    """
+    Period in seconds when to send a notification before the plan expires.
+    """
+    notificationPeriodBeforeExpiration: Int
+    """
+    Threshold of the credit limit on the account, when the account goes lower than this value then notification is sent.
+    """
+    notificationCreditLimitThreshold: Int
+    """
+    Custom data in JSON format to be able to save and retrieve some configurations.
+    """
+    json: AWSJSON
+}
+
+"""
+A union to define all possible parameters for templates.
+"""
+union TemplateInstance = InitialTemplateInstance
+
+"""
+Possible states of a planVersion.
+"""
+enum PlanState {
+    """
+    A planVersion was just created and currently editable.
+    """
+    NEW
+    """
+    A planVersion was already deployed and no longer editable, but cannot be assigned to an Account.
+    """
+    DEPLOYED
+    """
+    A planVersion can be assigned to an Account.
+    """
+    AVAILABLE
+    """
+    A planVersion cannot be assigned to an Account.
+    """
+    SUSPENDED
+    """
+    A planVersion is no longer used by any Accounts.
+    """
+    ARCHIVED
+}
+
+"""
+Versioned part of the planVersion.
+"""
+type PlanVersion implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    String representation of the version.
+    """
+    version: String!
+    """
+    If the current version is based on another version.
+    """
+    basedOn: PlanVersion
+    """
+    Plan of the plan version.
+    """
+    plan: Plan
+    """
+    Each version has its own state.
+    """
+    state: PlanState!
+    """
+    The number of assignements to Accounts this version has.
+    """
+    refCount: Int!
+    """
+    A list of Plan Services of the planVersion version.
+    """
+    planServices: [PlanService!]!
+    """
+    When it was created.
+    """
+    createdAt: AWSDateTime!
+    """
+    By whom it was created.
+    """
+    createdBy: String!
+    """
+    When it was last modified.
+    """
+    modifiedAt: AWSDateTime!
+    """
+    By whom it was modified.
+    """
+    modifiedBy: String!
+    """
+    When it was deployed.
+    """
+    deployedAt: AWSDateTime
+    """
+    By whom it was deployed.
+    """
+    deployedBy: String
+    """
+    If the plan version was created by using template this attribute contains all the parameters with which it was created.
+    """
+    template: TemplateInstance
+    """
+    List of counters defined in the plan.
+    """
+    counters: [Counter]
+}
+
+"""
+Return type of PlanVersion including all possible errors.
+"""
+union PlanVersionResult = PlanVersion | PlanVersionNotFound
+
+"""
+An edge in a connection.
+"""
+type PlanVersionEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: PlanVersion!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for PlanVersion.
+"""
+type PlanVersionConnection {
+    """
+    TBD
+    """
+    edges: [PlanVersionEdge!]
+    """
+    TBD
+    """
+    pageInfo: PageInfo!
+}
+
+"""
+Possible directions in which to order a list of items when provided an `orderBy` argument.
+"""
+enum OrderDirection {
+    """
+    Specifies an ascending order for a given `orderBy` argument.
+    """
+    ASC
+    """
+    Specifies a descending order for a given `orderBy` argument.
+    """
+    DESC
+}
+
+"""
+Ways in which lists of plan versions can be ordered upon return.
+"""
+input PlanVersionOrder {
+    """
+    The direction in which to order issues by the specified field.
+    """
+    direction: OrderDirection!
+    """
+    The field in which to order versions by.
+    """
+    field: PlanVersionOrderField!
+}
+
+"""
+Properties by which version connections can be ordered.
+"""
+enum PlanVersionOrderField {
+    """
+    Order issues by id.
+    """
+    ID
+    """
+    Order versions by update time.
+    """
+    LAST_MODIFIED
+    """
+    Order versions by deploy time.
+    """
+    DEPLOYED_DATE
+}
+
+"""
+An object to represent a set of plan services that contains all the information to perform charging / crediting operations.
+"""
+type Plan implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    A human readable name.
+    """
+    name: String!
+    """
+    A list of versions of the plan.
+    """
+    versions(
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String,
+        """
+        Ordering options for plan versions returned from the connection.
+        """
+        orderBy: PlanVersionOrder
+    ): PlanVersionConnection!
+}
+
+"""
+Return type of Plan including all possible errors.
+"""
+union PlanResult = Plan | PlanNotFound
+
+"""
+Return type of CreatePlan.
+"""
+type CreatePlanPayload {
+    """
+    Created plan.
+    """
+    plan: Plan!
+}
+
+"""
+An error type to be thrown if a value of a field in an input fails a validation.
+"""
+type InvalidField implements Error {
+    """
+    A name of the invalid field.
+    """
+    fieldName: String!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if a plan with provided ID already exists.
+"""
+type PlanAlreadyExists implements Error {
+    """
+    Already existing plan ID.
+    """
+    planId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreatePlan including all possible errors.
+InvalidField (InvalidCounterName) - The provided counter name must be between 1 and 50 characters and consist of letters, digits or special characters.
+InvalidField (InvalidCounterNames) - Counter names must be unique accross the plan.
+InvalidField (InvalidCounterStates) - Thresholds and names of states must be unique accross the counter and one of the states must not have a threshold.
+InvalidField (InvalidCounterExpression) - The provided counter SPEL expression cannot be compiled.
+"""
+union CreatePlanResult = CreatePlanPayload | InvalidField | PlanServiceNotFound | PlanAlreadyExists
+
+"""
+Input type of CopyPlan to define a plan version to copy from.
+"""
+input CopyFromPlanVersion {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a plan version to make a copy from.
+    """
+    planVersionId: ID!
+}
+
+"""
+Input type of CopyPlan to define a new plan attributes.
+"""
+input CopyToPlan {
+    """
+    TBD
+    """
+    name: String!
+}
+
+"""
+Return type of CopyPlan.
+"""
+type CopyPlanPayload {
+    """
+    TBD
+    """
+    plan: Plan!
+}
+
+"""
+An error type to be thrown if a plan was not found.
+"""
+type PlanNotFound implements Error {
+    """
+    A plan for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    A plan with a provided plan ID was not found.
+    """
+    planId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if a plan was not found.
+"""
+type PlanVersionNotFound implements Error {
+    """
+    A plan for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    A plan version with a provided plan version ID was not found.
+    """
+    planVersionId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CopyPlan including all possible errors.
+"""
+union CopyPlanResult = CopyPlanPayload | PlanVersionNotFound | InvalidField
+
+"""
+An edge in a connection.
+"""
+type PlanEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: Plan!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for Plan.
+"""
+type PlanConnection {
+    """
+    TBD
+    """
+    edges: [PlanEdge!]
+    """
+    TBD
+    """
+    pageInfo: PageInfo!
+}
+
+"""
+Input type of UpdatePlan.
+"""
+input UpdatePlanInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a plan to update.
+    """
+    planId: ID!
+    """
+    TBD
+    """
+    name: String
+}
+
+"""
+Return type of UpdatePlan.
+"""
+type UpdatePlanPayload {
+    """
+    TBD
+    """
+    plan: Plan!
+}
+
+"""
+Return type of UpdatePlan including all possible errors.
+"""
+union UpdatePlanResult = UpdatePlanPayload | PlanNotFound | InvalidField
+
+"""
+Input type of DeployPlanVersion.
+"""
+input DeployPlanVersionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a planVersion version to deploy.
+    """
+    planVersionId: ID!
+    """
+    The list of plan version IDs to migrate from to this new deployed version. Automatically upgrade already
+    subscribed accounts to the new version. Not required for a new deployment. If not specified considered as
+    no auto migration is required.
+    """
+    migrateFromVersions: [ID!]
+}
+
+"""
+Return type of PlanVersion.
+"""
+type PlanVersionPayload {
+    """
+    TBD
+    """
+    planVersion: PlanVersion!
+}
+
+"""
+An error type to be thrown if a plan failed verification on deployment.
+"""
+type DeploymentVerificationFailed implements Error {
+    """
+    A plan for a provided provider ID failed verification.
+    """
+    providerId: ID!
+    """
+    A plan version with a provided plan version ID failed verification.
+    """
+    planVersionId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if there is already migration in progress for this plan.
+"""
+type MigrationAlreadyInProgress implements Error {
+    """
+    A plan for a provided provider ID is being migrated.
+    """
+    providerId: ID!
+    """
+    A plan version to which there is an ongoing migration.
+    """
+    planVersionId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of DeployPlanVersion including all possible errors.
+"""
+union DeployPlanVersionResult = PlanVersionPayload | PlanVersionNotFound | DeploymentVerificationFailed |
+    MigrationAlreadyInProgress | PlanVersionWrongTransition
+
+"""
+Input type of KeyValue.
+"""
+input KeyValueInput {
+    """
+    Name of the key.
+    """
+    name: String!
+    """
+    Value for the key. If not provided then the key will be removed.
+    """
+    value: String
+}
+
+"""
+Input type of SubscribeToPlanVersion.
+"""
+input SubscribeToPlanVersionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    A unique identifier of a plan version to assign.
+    """
+    planVersionId: ID!
+    """
+    TBD
+    """
+    from: AWSDateTime
+    """
+    TBD
+    """
+    to: AWSDateTime
+    """
+    List of fields with values that override values from a plan.
+    """
+    overrides: [KeyValueInput]
+}
+
+"""
+Key value object.
+"""
+type KeyValue {
+    """
+    Name of the key.
+    """
+    name: String!
+    """
+    Value for the key.
+    """
+    value: String!
+}
+
+"""
+An instance of a plan version that belongs to an account.
+"""
+type SubscribedPlanVersion {
+    """
+    TBD
+    """
+    from: AWSDateTime
+    """
+    TBD
+    """
+    to: AWSDateTime
+    """
+    TBD
+    """
+    planVersion: PlanVersion!
+    """
+    List of fields with values that override values from a plan.
+    """
+    overrides: [KeyValue]
+}
+
+"""
+Return type of SubscribeToPlanVersion.
+"""
+type SubscribeToPlanVersionPayload {
+    """
+    TBD
+    """
+    subscribedPlanVersion: SubscribedPlanVersion!
+    """
+    TBD
+    """
+    account: Account!
+}
+
+"""
+An error type to be thrown if a plan cannot be assigned.
+"""
+type PlanVersionIsNotAssignable implements Error {
+    """
+    A plan for a provided provider ID cannot be assigned.
+    """
+    providerId: ID!
+    """
+    A plan version with a provided plan version ID cannot be assigned.
+    """
+    planVersionId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if an account was not found.
+"""
+type AccountNotFound implements Error {
+    """
+    An account for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    An account with a provided account ID was not found.
+    """
+    accountId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if a plan cannot be assigned or reassigned to provided dates.
+"""
+type SubscribeToPlanVersionValidationFailed implements Error {
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of SubscribeToPlan including all possible errors.
+"""
+union SubscribeToPlanVersionResult = SubscribeToPlanVersionPayload | PlanVersionNotFound | PlanVersionIsNotAssignable | AccountNotFound | InvalidField | SubscribeToPlanVersionValidationFailed
+
+"""
+Input type of UpdatePlanSubscription.
+"""
+input UpdatePlanVersionSubscriptionParametersInput {
+    """
+    A unique identifier of a plan version to assign.
+    """
+    planVersionId: ID!
+    """
+    TBD
+    """
+    from: AWSDateTime
+    """
+    TBD
+    """
+    to: AWSDateTime
+}
+
+"""
+Input type of UpdatePlanSubscription.
+"""
+input UpdatePlanSubscriptionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    Existing parameters of the subscription.
+    """
+    existing: UpdatePlanVersionSubscriptionParametersInput!
+    """
+    New parameters for the subscription.
+    """
+    new: UpdatePlanVersionSubscriptionParametersInput
+    """
+    List of fields with values that override values from a plan.
+    """
+    overrides: [KeyValueInput]
+}
+
+"""
+An error type to be thrown if a subscription for provided dates cannot be found. If "to" was empty in input, it will be empty in error. If "from" was empty in input, it will be "now" in error.
+"""
+type SubscriptionNotFound implements Error {
+    """
+    A unique identifier of a plan version of a subscription.
+    """
+    planVersionId: ID!
+    """
+    TBD
+    """
+    from: AWSDateTime
+    """
+    TBD
+    """
+    to: AWSDateTime
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of UpdatePlanSubscription including all possible errors.
+"""
+union UpdatePlanVersionSubscriptionResult = SubscribeToPlanVersionPayload | PlanVersionNotFound | PlanVersionIsNotAssignable | AccountNotFound | SubscriptionNotFound | InvalidField | SubscribeToPlanVersionValidationFailed
+
+"""
+Input type of CancelPlanSubscription.
+"""
+input CancelPlanSubscriptionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    A unique identifier of a plan version to assign.
+    """
+    planVersionId: ID!
+    """
+    TBD
+    """
+    from: AWSDateTime
+    """
+    TBD
+    """
+    to: AWSDateTime
+}
+
+"""
+Return type of CancelPlanVersionSubscription.
+"""
+type CancelPlanVersionSubscriptionPayload {
+    """
+    TBD
+    """
+    account: Account!
+}
+
+"""
+Return type of CancelPlanVersionSubscription including all possible errors.
+"""
+union CancelPlanVersionSubscriptionResult = CancelPlanVersionSubscriptionPayload | PlanVersionNotFound | AccountNotFound | SubscriptionNotFound | InvalidField
+
+"""
+Input type of MakePlanVersionAssignable and MakePlanVersionNotAssignable.
+"""
+input AssignablePlanVersionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a plan version to make assignable or not assignable.
+    """
+    planVersionId: ID!
+}
+
+"""
+An error type to be thrown if transition from one state to another is not possible.
+"""
+type PlanVersionWrongTransition implements Error {
+    """
+    A plan version for a provided provider ID cannot be transitioned.
+    """
+    providerId: ID!
+    """
+    A plan version with a provided plan version ID cannot be transitioned.
+    """
+    planVersionId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of MakePlanVersionAssignable and MakePlanVersionNotAssignable including all possible errors.
+"""
+union AssignablePlanVersionResult = PlanVersionPayload | PlanVersionNotFound | PlanVersionWrongTransition
+
+"""
+Input type of DeletePlan.
+"""
+input DeletePlanInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a plan to delete.
+    """
+    planId: ID!
+}
+
+"""
+Return type of DeletePlan.
+"""
+type DeletePlanPayload {
+    """
+    A unique identifier of a plan that has been deleted.
+    """
+    deletedPlanId: ID!
+    """
+    A list of plan version IDs for deleted plan versions.
+    """
+    deletedPlanVersions: [ID!]!
+    """
+    A list of plan service IDs for deleted plan services.
+    """
+    deletedPlanServices: [ID!]!
+}
+
+"""
+Return type of DeletePlan including all possible errors.
+"""
+union DeletePlanResult = DeletePlanPayload | PlanNotFound | PlanVersionHasReferences
+
+"""
+The possible values for the field data type.
+"""
+enum FieldDataType {
+    """
+    Data type of the field that represents simple string.
+    """
+    STRING
+    """
+    Data type of the field that represents any number.
+    """
+    NUMBER
+    """
+    Data type of the field that represents any boolean.
+    """
+    BOOLEAN
+    """
+    Data type of the field that represents complex objects in a form of a json string.
+    """
+    JSON
+}
+
+"""
+A field that is provided by some entity and can be used by rules.
+"""
+type ProvidedField {
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    dataType: FieldDataType!
+    """
+    TBD
+    """
+    usedBy: [Rule]
+    """
+    TBD
+    """
+    customData: String
+}
+
+"""
+External entity and the main purpose of it is to provide some data to rules.
+"""
+type External {
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    providedFields: [ProvidedField]
+}
+
+"""
+All possible types of field providers.
+"""
+union FieldProvider = Rule | PlanService | External
+
+"""
+A field that is provided by some entity and already in use.
+"""
+type UsedField {
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    dataType: FieldDataType!
+    """
+    TBD
+    """
+    providedBy: FieldProvider
+}
+
+"""
+An item that has one to one relation to the plugins.
+"""
+type Rule implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    pluginId: String!
+    """
+    TBD
+    """
+    providedFields: [ProvidedField]
+    """
+    TBD
+    """
+    usedFields: [UsedField]
+}
+
+"""
+An edge in a connection.
+"""
+type RuleEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: Rule!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for Rule.
+"""
+type RuleConnection {
+    """
+    TBD
+    """
+    edges: [RuleEdge!]
+    """
+    TBD
+    """
+    pageInfo: PageInfo!
+}
+
+"""
+Input type of ProvidedField.
+"""
+input ProvidedFieldInput {
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    dataType: FieldDataType!
+    """
+    TBD
+    """
+    customData: String!
+}
+
+"""
+Input type of RuleSets.
+"""
+input RuleSetsInput {
+    """
+    A list of rules to be used for regular charges.
+    """
+    charging: [ID!]
+    """
+    A list of rules to be used for crediting.
+    """
+    crediting: [ID!]
+    """
+    A list of rules to be used for recurring charges.
+    """
+    recurring: [ID!]
+}
+
+"""
+A bunch of rules.
+"""
+type RuleSets {
+    """
+    A list of rules to be used for regular charges.
+    """
+    charging: [Rule!]
+    """
+    A list of rules to be used for crediting.
+    """
+    crediting: [Rule!]
+    """
+    A list of rules to be used for recurring charges.
+    """
+    recurring: [Rule!]
+}
+
+"""
+Input type of CreatePlanService.
+"""
+input CreatePlanServiceInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a plan version where to create a plan service.
+    """
+    planVersionId: ID!
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    serviceType: String!
+    """
+    TBD
+    """
+    ruleSets: RuleSetsInput!
+    """
+    TBD
+    """
+    providedFields: [ProvidedFieldInput]
+}
+
+"""
+An item that consists of rules and belongs to a plan to provide information how to do charging / crediting for one particular service type.
+"""
+type PlanService implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    TBD
+    """
+    name: String!
+    """
+    TBD
+    """
+    serviceType: String!
+    """
+    TBD
+    """
+    ruleSets: RuleSets!
+    """
+    TBD
+    """
+    providedFields: [ProvidedField]
+}
+
+"""
+Return type of CreatePlanService.
+"""
+type CreatePlanServicePayload {
+    """
+    A plan version where a new plan service was created.
+    """
+    planVersion: PlanVersion!
+    """
+    The new created plan service.
+    """
+    planService: PlanService!
+}
+
+"""
+An error type to be thrown if a rule was not found.
+"""
+type RuleNotFound implements Error {
+    """
+    A rule for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    A rule with a provided rule ID was not found.
+    """
+    ruleId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if a service type already exists in a plan version.
+"""
+type ServiceTypeAlreadyExists implements Error {
+    """
+    A service type for a provided provider ID already exists.
+    """
+    providerId: ID!
+    """
+    A service type for a provided plan version ID already exists.
+    """
+    planVersionId: ID!
+    """
+    A service type already exists in the plan version.
+    """
+    serviceType: String!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if a field was not found.
+"""
+type FieldNotFound implements Error {
+    """
+    A field with provided name was not found.
+    """
+    fieldName: String!
+    """
+    A field with provided data type was not found.
+    """
+    fieldDataType: FieldDataType!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreatePlanService including all possible errors.
+"""
+union CreatePlanServiceResult = CreatePlanServicePayload | PlanVersionNotFound | RuleNotFound | ServiceTypeAlreadyExists | InvalidField | FieldNotFound
+
+"""
+Input type of UpdatePlanService.
+"""
+input UpdatePlanServiceInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    planServiceId: ID!
+    """
+    TBD
+    """
+    name: String
+    """
+    TBD
+    """
+    serviceType: String
+    """
+    TBD
+    """
+    ruleSets: RuleSetsInput
+    """
+    TBD
+    """
+    providedFields: [ProvidedFieldInput]
+}
+
+"""
+Return type of UpdatePlanService.
+"""
+type UpdatePlanServicePayload {
+    """
+    TBD
+    """
+    planService: PlanService!
+}
+
+"""
+An error type to be thrown if a planService was not found.
+"""
+type PlanServiceNotFound implements Error {
+    """
+    A plan service for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    A plan service with a provided plan service ID was not found.
+    """
+    planServiceId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+An error type to be thrown if a plan service is read only. For example, when a version is already deployed.
+"""
+type PlanServiceIsReadOnly implements Error {
+    """
+    A plan for a provided provider ID is read only.
+    """
+    providerId: ID!
+    """
+    A unique identifier of a plan which is read only.
+    """
+    planServiceId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of UpdatePlanService including all possible errors.
+"""
+union UpdatePlanServiceResult = UpdatePlanServicePayload | PlanServiceNotFound | RuleNotFound | ServiceTypeAlreadyExists | InvalidField | PlanServiceIsReadOnly | FieldNotFound
+
+"""
+An edge in a connection.
+"""
+type PlanServiceEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: PlanService!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for PlanService.
+"""
+type PlanServiceConnection {
+    """
+    TBD
+    """
+    edges: [PlanServiceEdge!]
+    """
+    TBD
+    """
+    pageInfo: PageInfo!
+}
+
+"""
+Input type of CopyPlanService to define a plan service to copy from.
+"""
+input CopyPlanServiceFrom {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    planServiceId: ID!
+}
+
+"""
+Input type of CopyPlanService to define a new plan service attributes.
+"""
+input CopyPlanServiceTo {
+    """
+    A unique identifier of a plan version where to create a copy of a plan service.
+    """
+    planVersionId: ID!
+    """
+    TBD
+    """
+    name: String
+}
+
+"""
+Return type of CopyPlanService.
+"""
+type CopyPlanServicePayload {
+    """
+    TBD
+    """
+    planService: PlanService!
+    """
+    TBD
+    """
+    planVersion: PlanVersion!
+}
+
+"""
+Return type of CopyPlanService including all possible errors.
+"""
+union CopyPlanServiceResult = CopyPlanServicePayload | PlanServiceNotFound | PlanVersionNotFound | InvalidField
+
+"""
+Input type of DeletePlanService.
+"""
+input DeletePlanServiceInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    planServiceId: ID!
+}
+
+"""
+Return type of DeletePlanService.
+"""
+type DeletePlanServicePayload {
+    """
+    TBD
+    """
+    deletedPlanServiceId: ID!
+    """
+    TBD
+    """
+    planVersion: PlanVersion!
+}
+
+"""
+Return type of DeletePlanService including all possible errors.
+"""
+union DeletePlanServiceResult = DeletePlanServicePayload | PlanServiceNotFound | PlanVersionHasReferences
+
+"""
+Representation of a balance of one particular account.
+"""
+type Balance {
+    """
+    TBD
+    """
+    version: Int
+    """
+    TBD
+    """
+    value: Float
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+An account to manage multiple devices.
+"""
+type Account implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    TBD
+    """
+    customData: AWSJSON
+    """
+    TBD
+    """
+    balance: Balance
+    """
+    TBD
+    """
+    parent: Account
+    """
+    TBD
+    """
+    inactivePlanVersions: [SubscribedPlanVersion]
+    """
+    TBD
+    """
+    activePlanVersions: [SubscribedPlanVersion]
+    """
+    TBD
+    """
+    archivedPlanVersions: [SubscribedPlanVersion]
+}
+
+"""
+Return type of Account including all possible errors.
+"""
+union AccountResult = Account | AccountNotFound
+
+"""
+Input type of CreateAccount.
+"""
+input CreateAccountInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    account: ID
+    """
+    TBD
+    """
+    parentAccount: ID
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+Return type of CreateAccount.
+"""
+type CreateAccountPayload {
+    """
+    TBD
+    """
+    account: Account!
+}
+
+"""
+An error type to be thrown if an account with provided ID already exists.
+"""
+type AccountAlreadyExists implements Error {
+    """
+    Already existing account ID.
+    """
+    accountId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreateAccount including all possible errors.
+"""
+union CreateAccountResult = CreateAccountPayload | AccountNotFound | AccountAlreadyExists | InvalidField
+
+"""
+Input type of UpdateAccount.
+"""
+input UpdateAccountInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+Return type of UpdateAccount.
+"""
+type UpdateAccountPayload {
+    """
+    TBD
+    """
+    account: Account!
+}
+
+"""
+Return type of UpdateAccount including all possible errors.
+"""
+union UpdateAccountResult = UpdateAccountPayload | AccountNotFound | InvalidField
+
+"""
+Input type of DeleteAccount.
+"""
+input DeleteAccountInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+}
+
+"""
+Return type of DeleteAccount.
+"""
+type DeleteAccountPayload {
+    """
+    TBD
+    """
+    deletedAccountId: ID!
+    """
+    TBD
+    """
+    parentAccount: Account
+}
+
+"""
+An error type to be thrown if an account has references preventing it from deletion.
+"""
+type AccountHasReferences implements Error {
+    """
+    An account for a provided provider ID has references (such as devices or children accounts) preventing it from deletion.
+    """
+    providerId: ID!
+    """
+    An account with a provided account ID has references (such as devices or children accounts) preventing it from deletion.
+    """
+    accountId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of DeleteAccount including all possible errors.
+"""
+union DeleteAccountResult = DeleteAccountPayload | AccountNotFound | AccountHasReferences
+
+"""
+The smallest unit in the Charging Engine which represents an end user and belongs to an account.
+"""
+type Device implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    TBD
+    """
+    account: Account!
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+Return type of Device including all possible errors.
+"""
+union DeviceResult = Device | DeviceNotFound
+
+"""
+Input type of CreateDevice.
+"""
+input CreateDeviceInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    TBD
+    """
+    device: ID
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+Return type of CreateDevice.
+"""
+type CreateDevicePayload {
+    """
+    TBD
+    """
+    device: Device!
+}
+
+"""
+An error type to be thrown if a device with provided ID already exists.
+"""
+type DeviceAlreadyExists implements Error {
+    """
+    Already existing device ID.
+    """
+    deviceId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreateDevice including all possible errors.
+"""
+union CreateDeviceResult = CreateDevicePayload | AccountNotFound | DeviceAlreadyExists | InvalidField
+
+"""
+Input type of UpdateDevice.
+"""
+input UpdateDeviceInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    TBD
+    """
+    deviceId: ID!
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+Return type of UpdateDevice.
+"""
+type UpdateDevicePayload {
+    """
+    TBD
+    """
+    device: Device!
+}
+
+"""
+An error type to be thrown if a device was not found.
+"""
+type DeviceNotFound implements Error {
+    """
+    A device for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    A device with a provided device ID was not found.
+    """
+    deviceId: ID!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of UpdateDevice including all possible errors.
+"""
+union UpdateDeviceResult = UpdateDevicePayload | DeviceNotFound | AccountNotFound | InvalidField
+
+"""
+Input type of DeleteDevice.
+"""
+input DeleteDeviceInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    TBD
+    """
+    accountId: ID!
+    """
+    TBD
+    """
+    deviceId: ID!
+}
+
+"""
+Return type of DeleteDevice.
+"""
+type DeleteDevicePayload {
+    """
+    TBD
+    """
+    deletedDeviceId: ID!
+    """
+    TBD
+    """
+    account: Account!
+}
+
+"""
+Return type of DeleteDevice including all possible errors.
+"""
+union DeleteDeviceResult = DeleteDevicePayload | DeviceNotFound
+
+"""
+The possible values for recurring period.
+"""
+enum RecurringPeriod {
+    """
+    Per day.
+    """
+    DAY
+    """
+    Per week.
+    """
+    WEEK
+    """
+    Per month.
+    """
+    MONTH
+}
+
+"""
+The possible values for week days.
+"""
+enum WeekDay {
+    """
+    Monday.
+    """
+    MONDAY
+    """
+    Tuesday.
+    """
+    TUESDAY
+    """
+    Wednesday.
+    """
+    WEDNESDAY
+    """
+    Thursday.
+    """
+    THURSDAY
+    """
+    Friday.
+    """
+    FRIDAY
+    """
+    Saturday.
+    """
+    SATURDAY
+    """
+    Sunday.
+    """
+    SUNDAY
+}
+
+"""
+Input type of TimePeriod. It should have times specified or days specified or both.
+"""
+input TimePeriodInput {
+    """
+    A list of time intervals in a format of HH:mm-HH:mm (10:32-15:43) or hh24:mm-hh24:mm (10:32am-3:43pm).
+    """
+    times: [String!]
+    """
+    A list of week days.
+    """
+    days: [WeekDay!]
+}
+
+"""
+Rate configuration.
+"""
+input RateInput {
+    """
+    Particular rate in units to be applied.
+    """
+    rate: Float!
+    """
+    Per unit rounding to be applied. If not specified default value is used.
+    """
+    perUnitRounding: Int
+    """
+    A tax rate to be applied.
+    """
+    taxRate: Float!
+}
+
+"""
+TBD
+"""
+input ExtendedRateInput {
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    aNumberCurrentCountryExpr: String!
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    bNumberHomeCountryExpr: String!
+    """
+    Rate configuration. If not provided means long distance for this number and origination is denied.
+    """
+    rate: RateInput
+}
+
+"""
+TBD
+"""
+input InitialTemplateServiceInput {
+    """
+    Units that will be added to this service on a specified recurring period. If not specified it means that it is unlimited.
+    """
+    periodAllowance: Int
+    """
+    Default value for per unit rounding. It is used mainly for rounding units from periodAllowance. And also it is used when perUnitRounding for rates are not provided.
+    """
+    defaultUnitRounding: Int!
+    """
+    Overage rate configuration. If not specified it means that a service will be denied when all granted units are consumed.
+    """
+    overage: RateInput
+    """
+    Rate configuration for off-peak hours. If not specified everything is rated as specified in overage.
+    """
+    offPeak: RateInput
+    """
+    A list of free services (for voice it is a list of free numbers). If not specified it is considered empty.
+    """
+    free: [String!]
+    """
+    Roaming configuration.
+    """
+    roaming: [ExtendedRateInput!]
+    """
+    Long distance configuration.
+    """
+    longDistance: [ExtendedRateInput!]
+    """
+    Units threshold to define when to send a notification.
+    """
+    notificationAllowanceThreshold: Int
+}
+
+"""
+Input type of CreatePlanFromInitialTemplate.
+"""
+input CreatePlanFromInitialTemplateInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A new plan ID. Autogenerated if not provided.
+    """
+    planId: ID
+    """
+    The name of the first version.
+    """
+    version: String!
+    """
+    A name for a new plan.
+    """
+    name: String!
+    """
+    A fee that will be charged per specified recurring period.
+    """
+    fee: Float!
+    """
+    A period when specified fee will be charged.
+    """
+    period: RecurringPeriod!
+    """
+    An action to perform with balances from a previous period. Rollover if true or reset if false.
+    """
+    rollover: Boolean!
+    """
+    A list of time periods used as off-peak times.
+    """
+    offPeakTimes: [TimePeriodInput!]
+    """
+    Rates for Voice service.
+    """
+    voice: InitialTemplateServiceInput
+    """
+    Rates for Data service.
+    """
+    data: InitialTemplateServiceInput
+    """
+    Rates for Text service.
+    """
+    text: InitialTemplateServiceInput
+    """
+    Period in seconds when to send a notification before the plan expires.
+    """
+    notificationPeriodBeforeExpiration: Int
+    """
+    Threshold of the credit limit on the account, when the account goes lower than this value then notification is sent.
+    """
+    notificationCreditLimitThreshold: Int
+    """
+    Custom data in JSON format to be able to save and retrieve some configurations.
+    """
+    json: AWSJSON
+}
+
+"""
+An error type to be thrown if a plan cannot be created out of the provided input.
+"""
+type CreatePlanValidationFailed implements Error {
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreatePlanFromInitialTemplate including all possible errors.
+"""
+union CreatePlanFromInitialTemplateResult = CreatePlanPayload | InvalidField | PlanAlreadyExists | CreatePlanValidationFailed
+
+"""
+Input type of UpdatePlanFromInitialTemplate.
+"""
+input UpdatePlanVersionFromInitialTemplateInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    An existing plan version ID to be updated.
+    """
+    planVersionId: ID!
+    """
+    The name of the version to be updated. Remains not changed if not provided.
+    """
+    version: String
+    """
+    A fee that will be charged per specified recurring period. Remains not changed if not provided.
+    """
+    fee: Float
+    """
+    A period when specified fee will be charged. Remains not changed if not provided.
+    """
+    period: RecurringPeriod
+    """
+    An action to perform with balances from a previous period. Rollover if true or reset if false. Remains not changed if not provided.
+    """
+    rollover: Boolean
+    """
+    A list of time periods used as off-peak times. Remains not changed if not provided.
+    """
+    offPeakTimes: [TimePeriodInput!]
+    """
+    Rates for Voice service. Remains not changed if not provided.
+    """
+    voice: InitialTemplateServiceInput
+    """
+    Rates for Data service. Remains not changed if not provided.
+    """
+    data: InitialTemplateServiceInput
+    """
+    Rates for Text service. Remains not changed if not provided.
+    """
+    text: InitialTemplateServiceInput
+    """
+    Period in seconds when to send a notification before the plan expires. Remains not changed if not provided.
+    """
+    notificationPeriodBeforeExpiration: Int
+    """
+    Threshold of the credit limit on the account, when the account goes lower than this value then notification is sent. Remains not changed if not provided.
+    """
+    notificationCreditLimitThreshold: Int
+    """
+    Custom data in JSON format to be able to save and retrieve some configurations. Remains not changed if not provided.
+    """
+    json: AWSJSON
+}
+
+"""
+An error type to be thrown if a plan version is read only. For example, when the version is already deployed.
+"""
+type PlanVersionIsReadOnly implements Error {
+    """
+    A plan version which is read only.
+    """
+    planVersion: PlanVersion!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of UpdatePlanVersionFromInitialTemplate including all possible errors.
+"""
+union UpdatePlanVersionFromInitialTemplateResult = PlanVersionPayload | InvalidField | PlanVersionNotFound | CreatePlanValidationFailed | PlanVersionIsReadOnly | PlanVersionAlreadyExists
+
+"""
+Input type of CreatePlanVersionFromInitialTemplate.
+"""
+input CreatePlanVersionFromInitialTemplateInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    An existing plan version ID to be updated or a base plan version ID for a new version.
+    """
+    planVersionId: ID!
+    """
+    The name of the new version.
+    """
+    version: String!
+    """
+    A fee that will be charged per specified recurring period. If not provided used from original version.
+    """
+    fee: Float
+    """
+    A period when specified fee will be charged. If not provided used from original version.
+    """
+    period: RecurringPeriod
+    """
+    An action to perform with balances from a previous period. Rollover if true or reset if false. If not provided used from original version.
+    """
+    rollover: Boolean
+    """
+    A list of time periods used as off-peak times. If not provided used from original version.
+    """
+    offPeakTimes: [TimePeriodInput!]
+    """
+    Rates for Voice service. If not provided used from the original version.
+    """
+    voice: InitialTemplateServiceInput
+    """
+    Rates for Data service. If not provided used from the original version.
+    """
+    data: InitialTemplateServiceInput
+    """
+    Rates for Text service. If not provided used from the original version.
+    """
+    text: InitialTemplateServiceInput
+    """
+    Period in seconds when to send a notification before the plan expires. If not provided used from the original version.
+    """
+    notificationPeriodBeforeExpiration: Int
+    """
+    Threshold of the credit limit on the account, when the account goes lower than this value then notification is sent. If not provided used from the original version.
+    """
+    notificationCreditLimitThreshold: Int
+    """
+    Custom data in JSON format to be able to save and retrieve some configurations. If not provided used from the original version.
+    """
+    json: AWSJSON
+}
+
+"""
+An error type to be thrown if a plan version already exists in a plan.
+"""
+type PlanVersionAlreadyExists implements Error {
+    """
+    A plan where the version already exists.
+    """
+    plan: Plan!
+    """
+    Already existing plan version.
+    """
+    planVersion: PlanVersion!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreatePlanVersionFromInitialTemplate including all possible errors.
+"""
+union CreatePlanVersionFromInitialTemplateResult = PlanVersionPayload | InvalidField | PlanVersionNotFound | CreatePlanValidationFailed | PlanVersionAlreadyExists
+
+"""
+Input type of DeletePlanVersion.
+"""
+input DeletePlanVersionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    An existing plan version ID.
+    """
+    planVersionId: ID!
+}
+
+"""
+Return type of DeletePlanVersion.
+"""
+type DeletePlanVersionPayload {
+    """
+    A unique identifier of a plan version that has been deleted.
+    """
+    deletedPlanVersionId: ID!
+    """
+    A plan from where the version has been deleted.
+    """
+    plan: Plan!
+}
+
+"""
+An error type to be thrown if a plan version has references preventing it from deletion.
+"""
+type PlanVersionHasReferences implements Error {
+    """
+    A plan version with has references preventing it from deletion.
+    """
+    planVersion: PlanVersion!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of DeletePlanVersion including all possible errors.
+"""
+union DeletePlanVersionResult = DeletePlanVersionPayload | PlanVersionNotFound | PlanVersionHasReferences
+
+"""
+Input type of ArchivePlanVersion.
+"""
+input ArchivePlanVersionInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    An existing plan version ID.
+    """
+    planVersionId: ID!
+}
+
+"""
+Return type of ArchivePlanVersion.
+"""
+type ArchivePlanVersionPayload {
+    """
+    A plan version that has been archived.
+    """
+    archivedPlanVersion: PlanVersion!
+}
+
+"""
+Return type of ArchivePlanVersion including all possible errors.
+"""
+union ArchivePlanVersionResult = ArchivePlanVersionPayload | PlanVersionNotFound | PlanVersionWrongTransition
+
+"""
+Represents an event in the Charging Engine.
+"""
+type EventDataRecord implements Node {
+    providerId: ID!
+    id: ID!
+    """
+    TBD
+    """
+    device: Device!
+    """
+    When it was created.
+    """
+    createdAt: AWSDateTime!
+    """
+    TBD
+    """
+    customData: AWSJSON
+}
+
+"""
+An edge in a connection.
+"""
+type EventDataRecordEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: EventDataRecord!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for EventDataRecord.
+"""
+type EventDataRecordAccountConnection {
+    """
+    List of nodes in the connection.
+    """
+    edges: [EventDataRecordEdge!]
+    """
+    Information about pagination in the connection.
+    """
+    pageInfo: PageInfo!
+    """
+    All of the EDRs belong to this account.
+    """
+    account: Account!
+}
+
+"""
+Return type of EventDataRecordAccountConnection including all possible errors.
+"""
+union EventDataRecordAccountConnectionResult = EventDataRecordAccountConnection | AccountNotFound
+
+"""
+The connection type for EventDataRecord.
+"""
+type EventDataRecordDeviceConnection {
+    """
+    List of nodes in the connection.
+    """
+    edges: [EventDataRecordEdge!]
+    """
+    Information about pagination in the connection.
+    """
+    pageInfo: PageInfo!
+    """
+    All of the EDRs belong to this device.
+    """
+    device: Device!
+}
+
+"""
+Return type of EventDataRecordDeviceConnection including all possible errors.
+"""
+union EventDataRecordDeviceConnectionResult = EventDataRecordDeviceConnection | DeviceNotFound
+
+"""
+Possible types of event data records.
+"""
+enum EventDataRecordType {
+    """
+    Interim EDRs are created as part of "init" and "update" charging requests.
+    """
+    INTERIM,
+
+    """
+    Final EDRs are created as part of "terminate" charging requests, and event based requests.
+    """
+    FINAL
+}
+
+"""
+Filtering options for event data records.
+"""
+input EventDataRecordFilter {
+    """
+    If not provided, then it is considered that all types are included.
+    """
+    types: [EventDataRecordType!]
+    """
+    Return EDRs created only at this time or later.
+    """
+    from: AWSDateTime
+    """
+    Return EDRs created only earlier than this time.
+    """
+    to: AWSDateTime
+}
+
+"""
+Settings for providers.
+"""
+type Settings {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    All settings formatted in JSON.
+    """
+    json: AWSJSON
+}
+
+"""
+Return type of Settings including all possible errors.
+"""
+union SettingsResult = Settings
+
+"""
+Input type of UpdateSettings.
+"""
+input UpdateSettingsInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    All settings formatted in JSON.
+    """
+    json: AWSJSON
+}
+
+"""
+Return type of UpdateSettings.
+"""
+type UpdateSettingsPayload {
+    """
+    TBD
+    """
+    settings: Settings!
+}
+
+"""
+Return type of UpdateSettings including all possible errors.
+"""
+union UpdateSettingsResult = UpdateSettingsPayload
+
+"""
+The root query for implementing GraphQL mutations.
+"""
+type Mutation {
+    """
+    Creates a plan for a provider.
+    """
+    createPlan(
+        """
+        Parameters for CreatePlan.
+        """
+        input: CreatePlanInput!
+    ): CreatePlanResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Creates a new plan out of an existing one.
+    """
+    copyPlan(
+        """
+        Parameters to define from what plan to copy.
+        """
+        from: CopyFromPlanVersion!,
+        """
+        Parameters to define how to create a new plan.
+        """
+        to: CopyToPlan!
+    ): CopyPlanResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Updates plan attributes, such as name.
+    """
+    updatePlan(
+        """
+        Parameters for UpdatePlan.
+        """
+        input: UpdatePlanInput!
+    ): UpdatePlanResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Deploys a plan so it can be used for assignment to accounts. Deployed plan cannot be edited anymore.
+    """
+    deployPlan(
+        """
+        Parameters for DeployPlan.
+        """
+        input: DeployPlanVersionInput!
+    ): DeployPlanVersionResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Makes a plan assignable. Plan must be deployed to be able to make it assignable.
+    """
+    makePlanAssignable(
+        """
+        Parameters for MakePlanAssignable.
+        """
+        input: AssignablePlanVersionInput!
+    ): AssignablePlanVersionResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Makes a plan not assignable. It can be done at any point of time to make sure that a plan cannot be assigned to anyone.
+    """
+    makePlanNotAssignable(
+        """
+        Parameters for MakePlanNotAssignable.
+        """
+        input: AssignablePlanVersionInput!
+    ): AssignablePlanVersionResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Assigns a plan to some account for predefined period of time.
+    """
+    subscribeToPlan(
+        """
+        Parameters for SubscribeToPlan.
+        """
+        input: SubscribeToPlanVersionInput!
+    ): SubscribeToPlanVersionResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Updates existing assignement of a plan to some account for predefined period of time.
+    """
+    updatePlanSubscription(
+        """
+        Parameters for UpdatePlanSubscription.
+        """
+        input: UpdatePlanSubscriptionInput!
+    ): UpdatePlanVersionSubscriptionResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Calceles existing assignement of a plan to some account for predefined period of time.
+    """
+    cancelPlanSubscription(
+        """
+        Parameters for CancelPlanSubscription.
+        """
+        input: CancelPlanSubscriptionInput!
+    ): CancelPlanVersionSubscriptionResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Deletes a plan. In order to delete a plan it has to be not used anymore.
+    """
+    deletePlan(
+        """
+        Parameters for DeletePlan.
+        """
+        input: DeletePlanInput!
+    ): DeletePlanResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Creates a plan service in a plan.
+    """
+    createPlanService(
+        """
+        Parameters for CreatePlanService.
+        """
+        input: CreatePlanServiceInput!
+    ): CreatePlanServiceResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Updates plan service attributes, such as name.
+    """
+    updatePlanService(
+        """
+        Parameters for UpdatePlanService.
+        """
+        input: UpdatePlanServiceInput!
+    ): UpdatePlanServiceResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Creates a plan service in a provided plan by copying an existing plan service from another plan.
+    """
+    copyPlanService(
+        """
+        Parameters to define from what plan service to copy.
+        """
+        from: CopyPlanServiceFrom!,
+        """
+        Parameters to define where to copy a new plan service.
+        """
+        to: CopyPlanServiceTo!
+    ): CopyPlanServiceResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Deletes a plan service from a not deployed plan.
+    """
+    deletePlanService(
+        """
+        Parameters for DeletePlanService.
+        """
+        input: DeletePlanServiceInput!
+    ): DeletePlanServiceResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Creates an account for a provider.
+    """
+    createAccount(
+        """
+        Parameters for CreateAccount.
+        """
+        input: CreateAccountInput!
+    ): CreateAccountResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Updates account attributes.
+    """
+    updateAccount(
+        """
+        Parameters for UpdateAccount.
+        """
+        input: UpdateAccountInput!
+    ): UpdateAccountResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Deletes an account if it does not have any children or devices.
+    """
+    deleteAccount(
+        """
+        Parameters for DeleteAccount.
+        """
+        input: DeleteAccountInput!
+    ): DeleteAccountResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Creates a device in an account.
+    """
+    createDevice(
+        """
+        Parameters for CreateDevice.
+        """
+        input: CreateDeviceInput!
+    ): CreateDeviceResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Updates device attributes.
+    """
+    updateDevice(
+        """
+        Parameters for UpdateDevice.
+        """
+        input: UpdateDeviceInput!
+    ): UpdateDeviceResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Deletes a device from an account.
+    """
+    deleteDevice(
+        """
+        Parameters for DeleteDevice.
+        """
+        input: DeleteDeviceInput!
+    ): DeleteDeviceResult!
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Creates a plan by using a template.
+    """
+    createPlanFromInitialTemplate(
+        """
+        Parameters for CreatePlanFromInitialTemplate.
+        """
+        input: CreatePlanFromInitialTemplateInput!
+    ): CreatePlanFromInitialTemplateResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Updates a plan that was created by using a template.
+    """
+    updatePlanVersionFromInitialTemplate(
+        """
+        Parameters for UpdatePlanVersionFromInitialTemplate.
+        """
+        input: UpdatePlanVersionFromInitialTemplateInput!
+    ): UpdatePlanVersionFromInitialTemplateResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Updates a plan that was created by using a template. Creates a new version of the plan.
+    """
+    createPlanVersionFromInitialTemplate(
+        """
+        Parameters for CreatePlanVersionFromInitialTemplate.
+        """
+        input: CreatePlanVersionFromInitialTemplateInput!
+    ): CreatePlanVersionFromInitialTemplateResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Deletes plan version if it was never deployed.
+    """
+    deletePlanVersion(
+        """
+        Parameters for DeletePlanVersion.
+        """
+        input: DeletePlanVersionInput!
+    ): DeletePlanVersionResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Archives plan version if it is suspended with no subscribed accounts.
+    """
+    archivePlanVersion(
+        """
+        Parameters for DeletePlanVersion.
+        """
+        input: ArchivePlanVersionInput!
+    ): ArchivePlanVersionResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Updates settings of a provider.
+    """
+    updateSettings(
+        """
+        Parameters for UpdateSettings.
+        """
+        input: UpdateSettingsInput!
+    ): UpdateSettingsResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+}
+
+"""
+The query root of the Charging Engine GraphQL interface.
+"""
+type Query {
+    """
+    Gets a list of plans for a provider with pagination.
+    """
+    getPlans(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String
+    ): PlanConnection
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Gets a plan for a provider.
+    """
+    getPlan(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Already existing plan ID.
+        """
+        planId: ID!
+    ): PlanResult
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Gets a plan version for a provider.
+    """
+    getPlanVersion(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Already existing plan version ID.
+        """
+        planVersionId: ID!
+    ): PlanVersionResult
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Gets a list of rules for a provider with pagination.
+    """
+    getRules(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String
+    ): RuleConnection
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Gets a list of plan services for a provider with pagination.
+    """
+    getPlanServices(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String
+    ): PlanServiceConnection
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Returns an account for a provider by an account ID.
+    """
+    getAccount(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Account ID.
+        """
+        accountId: ID!
+    ): AccountResult
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Returns a device for a provider by a device ID.
+    """
+    getDevice(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Device ID.
+        """
+        deviceId: ID!
+    ): DeviceResult
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Returns a list of all parent accounts for a provided device ID.
+    """
+    getRelatedAccountsByDevice(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Finds all related accounts by a device ID.
+        """
+        deviceId: ID!
+    ): [Account!]
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Gets a list of event data records for an account with pagination.
+    """
+    getEventDataRecordsByAccount(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Account ID.
+        """
+        accountId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String,
+        """
+        Filtering options for event data records returned in the connection.
+        """
+        filterBy: EventDataRecordFilter
+    ): EventDataRecordAccountConnectionResult
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Gets a list of event data records for a device with pagination.
+    """
+    getEventDataRecordsByDevice(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Device ID.
+        """
+        deviceId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String,
+        """
+        Filtering options for event data records returned in the connection.
+        """
+        filterBy: EventDataRecordFilter
+    ): EventDataRecordDeviceConnectionResult
+    @aws_auth(cognito_groups: ["Device_Admin"])
+
+    """
+    Gets settings for a provider.
+    """
+    getSettings(
+        """
+        Service provider ID.
+        """
+        providerId: ID!
+    ): SettingsResult
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+}
+
+##################################################################################################
+##### AWS Scalar types                                                                       #####
+##### Source:                                                                                #####
+##### https://github.com/awslabs/graphql-schema-utilities/issues/15#issuecomment-653691538   #####
+##################################################################################################
+
+# aws/types.graphql
+# https://docs.aws.amazon.com/appsync/latest/devguide/scalars.html#appsync-defined-scalars
+
+"""
+An extended ISO 8601 date string in the format YYYY-MM-DD.
+"""
+scalar AWSDate
+"""
+An extended ISO 8601 time string in the format hh:mm:ss.sss.
+"""
+scalar AWSTime
+"""
+An extended ISO 8601 date and time string in the format YYYY-MM-DDThh:mm:ss.sssZ.
+"""
+scalar AWSDateTime
+"""
+An integer value representing the number of seconds before or after 1970-01-01-T00:00Z.
+"""
+scalar AWSTimestamp
+"""
+An email address in the format local-part@domain-part as defined by RFC 822.
+"""
+scalar AWSEmail
+"""
+A JSON string. Any valid JSON construct is automatically parsed and loaded in the resolver mapping templates as maps, lists, or scalar values rather than as the literal input strings. Unquoted strings or otherwise invalid JSON result in a GraphQL validation error.
+"""
+scalar AWSJSON
+"""
+A URL as defined by RFC 1738. For example, https://www.amazon.com/dp/B000NZW3KC/ or mailto:example@example.com. URLs must contain a schema (http, mailto) and can't contain two forward slashes (//) in the path part.
+"""
+scalar AWSURL
+"""
+A phone number. This value is stored as a string. Phone numbers can contain either spaces or hyphens to separate digit groups. Phone numbers without a country code are assumed to be US/North American numbers adhering to the North American Numbering Package (NANP).
+"""
+scalar AWSPhone
+"""
+A valid IPv4 or IPv6 address. IPv4 addresses are expected in quad-dotted notation (123.12.34.56). IPv6 addresses are expected in non-bracketed, colon-separated format (1a2b:3c4b::1234:4567). You can include an optional CIDR suffix (123.45.67.89/16) to indicate subnet mask.
+"""
+scalar AWSIPAddress
+
+##################################################################################################
+##### AWS Directives                                                                         #####
+##################################################################################################
+
+"""Directs the schema to enforce authorization on a field"""
+directive @aws_auth(
+    """List of cognito user pool groups which have access on this field"""
+    cognito_groups: [String]
+) on FIELD_DEFINITION
