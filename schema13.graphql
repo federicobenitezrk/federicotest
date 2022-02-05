@@ -1,5 +1,5 @@
 """
-v6.06
+v8.00
 """
 schema {
     query: Query
@@ -259,6 +259,10 @@ type Rate {
     """
     rate: Float!
     """
+    Particular rate in units to be applied for Friends and Family calls. If not provided then there is only standard rate applied.
+    """
+    ffRate: Float
+    """
     Per unit rounding to be applied. If not specified default value is used.
     """
     perUnitRounding: Int
@@ -268,10 +272,7 @@ type Rate {
     taxRate: Float!
 }
 
-"""
-Rate configuration for roaming.
-"""
-type ExtendedRate {
+type Origination {
     """
     ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
     Negation can be used. For example, !US.
@@ -282,6 +283,33 @@ type ExtendedRate {
     Negation can be used. For example, !US.
     """
     bNumberHomeCountryExpr: String!
+}
+
+type Termination {
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    aNumberHomeCountryExpr: String!
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    bNumberCurrentCountryExpr: String!
+}
+
+"""
+Rate configuration for roaming.
+"""
+type ExtendedRate {
+    """
+    Information about A and B parties for MO calls.
+    """
+    origination: Origination
+    """
+    Information about A and B parties for MT calls.
+    """
+    termination: Termination
     """
     Rate configuration. If not provided means roaming for this origination is denied.
     """
@@ -1704,6 +1732,10 @@ type Account implements Node {
     TBD
     """
     archivedPlanVersions: [SubscribedPlanVersion]
+    """
+    List of friends and family.
+    """
+    friendsAndFamily: [String]
 }
 
 """
@@ -1731,6 +1763,10 @@ input CreateAccountInput {
     TBD
     """
     customData: AWSJSON
+    """
+    List of friends and family.
+    """
+    friendsAndFamily: [String]
 }
 
 """
@@ -1758,6 +1794,8 @@ type AccountAlreadyExists implements Error {
 
 """
 Return type of CreateAccount including all possible errors.
+InvalidField (InvalidFriendsAndFamilyList) - Friends and family list can consist of 20 numbers maximum.
+InvalidField (InvalidFriendsAndFamilyNumber) - Friends and family list consists of invalid number. The only allowed format is E.164.
 """
 union CreateAccountResult = CreateAccountPayload | AccountNotFound | AccountAlreadyExists | InvalidField
 
@@ -1777,6 +1815,10 @@ input UpdateAccountInput {
     TBD
     """
     customData: AWSJSON
+    """
+    List of friends and family.
+    """
+    friendsAndFamily: [String]
 }
 
 """
@@ -2081,6 +2123,10 @@ input RateInput {
     """
     rate: Float!
     """
+    Particular rate in units to be applied for Friends and Family calls. If not provided then there is only standard rate applied.
+    """
+    ffRate: Float
+    """
     Per unit rounding to be applied. If not specified default value is used.
     """
     perUnitRounding: Int
@@ -2091,9 +2137,9 @@ input RateInput {
 }
 
 """
-TBD
+Information about A and B parties for MO calls.
 """
-input ExtendedRateInput {
+input OriginationInput {
     """
     ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
     Negation can be used. For example, !US.
@@ -2104,6 +2150,36 @@ input ExtendedRateInput {
     Negation can be used. For example, !US.
     """
     bNumberHomeCountryExpr: String!
+}
+
+"""
+Information about A and B parties for MT calls.
+"""
+input TerminationInput {
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    aNumberHomeCountryExpr: String!
+    """
+    ISO 3166-1 alpha-2 country code. For example, US. The list can be found here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    Negation can be used. For example, !US.
+    """
+    bNumberCurrentCountryExpr: String!
+}
+
+"""
+TBD
+"""
+input ExtendedRateInput {
+    """
+    Information about A and B parties for MO calls. Either origination or termination must be provided.
+    """
+    origination: OriginationInput
+    """
+    Information about A and B parties for MT calls. Either origination or termination must be provided.
+    """
+    termination: TerminationInput
     """
     Rate configuration. If not provided means long distance for this number and origination is denied.
     """
@@ -2220,6 +2296,7 @@ type CreatePlanValidationFailed implements Error {
 
 """
 Return type of CreatePlanFromInitialTemplate including all possible errors.
+InvalidField (InvalidExtendedRate) - In the roaming or long distance one of the inputs (origination or termination) must be provided.
 """
 union CreatePlanFromInitialTemplateResult = CreatePlanPayload | InvalidField | PlanAlreadyExists | CreatePlanValidationFailed
 
@@ -2296,6 +2373,7 @@ type PlanVersionIsReadOnly implements Error {
 
 """
 Return type of UpdatePlanVersionFromInitialTemplate including all possible errors.
+InvalidField (InvalidExtendedRate) - In the roaming or long distance one of the inputs (origination or termination) must be provided.
 """
 union UpdatePlanVersionFromInitialTemplateResult = PlanVersionPayload | InvalidField | PlanVersionNotFound | CreatePlanValidationFailed | PlanVersionIsReadOnly | PlanVersionAlreadyExists
 
@@ -2376,6 +2454,7 @@ type PlanVersionAlreadyExists implements Error {
 
 """
 Return type of CreatePlanVersionFromInitialTemplate including all possible errors.
+InvalidField (InvalidExtendedRate) - In the roaming or long distance one of the inputs (origination or termination) must be provided.
 """
 union CreatePlanVersionFromInitialTemplateResult = PlanVersionPayload | InvalidField | PlanVersionNotFound | CreatePlanValidationFailed | PlanVersionAlreadyExists
 
@@ -2611,9 +2690,302 @@ type UpdateSettingsPayload {
 }
 
 """
+Field mapping.
+"""
+type FieldMapping {
+    """
+    The key that will be generated by this mapping. For example, "transformedRequest.sMSChargingInformation.numberofMessagesSent".
+    The path must start from either "transformedRequest." or "transformedResponse." and might be existing path or not existing.
+    If provided path does not exist in request or response, only the last key should not exist.
+    For example, "transformedResponse.invocationResult.message" is allowed, while "transformedResponse.invocationResult.message.text" is not allowed, because message is a new key already.
+    It is possible to set a new field to a list. Originally SpEL does not support that, but we iterate over lists with provided [] after them.
+    For example, "transformedRequest.multipleUnitUsage[].usedUnitContainer[].timeSpecificUnits", both multipleUnitUsage and usedUnitContainer are arrays, it means eventually field mapper will add to each item in these lists a new key "timeSpecificUnits".
+    """
+    path: String!
+    """
+    SpEL expression to generate the value(s).
+    It must return one value, but also it can use the same expressions as "path" with [].
+    For example, "originalRequest.multipleUnitUsage[].usedUnitContainer[].serviceSpecificUnits * 10".
+    It is also possible to use "originalField" as a reference to original value if field exists.
+    For example, "originalField + 10".
+    """
+    expr: String!
+    """
+    Field provided by these field mapping.
+    """
+    field: ProvidedField!
+}
+
+"""
+An edge in a connection.
+"""
+type FieldMappingEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: FieldMapping!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for FieldMapping.
+"""
+type FieldMappingConnection {
+    """
+    List of nodes in the connection.
+    """
+    edges: [FieldMappingEdge!]
+    """
+    Information about pagination in the connection.
+    """
+    pageInfo: PageInfo!
+}
+
+"""
 Return type of UpdateSettings including all possible errors.
 """
 union UpdateSettingsResult = UpdateSettingsPayload
+
+"""
+Input type of CreateFieldMapping.
+"""
+input CreateFieldMappingInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    The key that will be generated by this mapping. For example, "transformedRequest.sMSChargingInformation.numberofMessagesSent".
+    The path must start from either "transformedRequest." or "transformedResponse." and might be existing path or not existing.
+    If provided path does not exist in request or response, only the last key should not exist.
+    For example, "transformedResponse.invocationResult.message" is allowed, while "transformedResponse.invocationResult.message.text" is not allowed, because message is a new key already.
+    It is possible to set a new field to a list. Originally SpEL does not support that, but we iterate over lists with provided [] after them.
+    For example, "transformedRequest.multipleUnitUsage[].usedUnitContainer[].timeSpecificUnits", both multipleUnitUsage and usedUnitContainer are arrays, it means eventually field mapper will add to each item in these lists a new key "timeSpecificUnits".
+    """
+    path: String!
+    """
+    SpEL expression to generate the value(s).
+    It must return one value, but also it can use the same expressions as "path" with [].
+    For example, "originalRequest.multipleUnitUsage[].usedUnitContainer[].serviceSpecificUnits * 10".
+    It is also possible to use "originalField" as a reference to original value if field exists.
+    For example, "originalField + 10".
+    """
+    expr: String!
+}
+
+"""
+Return type of CreateFieldMapping.
+"""
+type CreateFieldMappingPayload {
+    """
+    Created field mapping.
+    """
+    fieldMapping: FieldMapping!
+}
+
+"""
+An error type to be thrown if a field mapping for provided path already exists.
+"""
+type FieldMappingAlreadyExists implements Error {
+    """
+    Already existing path.
+    """
+    path: String!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of CreateFieldMapping including all possible errors.
+InvalidField (InvalidFieldMappingPath) - The provided field mapping path cannot be compiled.
+InvalidField (InvalidFieldMappingExpression) - The provided field mapping SpEL expression cannot be compiled.
+"""
+union CreateFieldMappingResult = CreateFieldMappingPayload | InvalidField | FieldMappingAlreadyExists
+
+"""
+Input type of UpdateFieldMapping.
+"""
+input UpdateFieldMappingInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    The key that will be generated by this mapping. For example, "transformedRequest.sMSChargingInformation.numberofMessagesSent".
+    It should be an existing path.
+    """
+    path: String!
+    """
+    SpEL expression to generate the value(s).
+    It must return one value, but also it can use the same expressions as "path" with [].
+    For example, "originalRequest.multipleUnitUsage[].usedUnitContainer[].serviceSpecificUnits * 10".
+    It is also possible to use "originalField" as a reference to original value if field exists.
+    For example, "originalField + 10".
+    """
+    expr: String!
+}
+
+"""
+Return type of UpdateFieldMapping.
+"""
+type UpdateFieldMappingPayload {
+    """
+    Updated field mapping.
+    """
+    fieldMapping: FieldMapping!
+}
+
+"""
+An error type to be thrown if a field mapping was not found.
+"""
+type FieldMappingNotFound implements Error {
+    """
+    A field mapping for a provided provider ID was not found.
+    """
+    providerId: ID!
+    """
+    A field mapping with a provided path was not found.
+    """
+    path: String!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of UpdateFieldMapping including all possible errors.
+InvalidField (InvalidFieldMappingExpression) - The provided field mapping SpEL expression cannot be compiled.
+"""
+union UpdateFieldMappingResult = UpdateFieldMappingPayload | FieldMappingNotFound | InvalidField
+
+"""
+Input type of DeleteFieldMapping.
+"""
+input DeleteFieldMappingInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    A path of a field mapping to delete.
+    """
+    path: ID!
+}
+
+"""
+Return type of DeleteFieldMapping.
+"""
+type DeleteFieldMappingPayload {
+    """
+    A path of a field mapping that has been deleted.
+    """
+    deletedPath: ID!
+}
+
+"""
+An error type to be thrown if a field mapping has references preventing it from deletion.
+"""
+type FieldMappingHasReferences implements Error {
+    """
+    A field mapping with has references preventing it from deletion.
+    """
+    fieldMapping: FieldMapping!
+
+    errorCode: String!
+    errorMessage: String
+}
+
+"""
+Return type of DeleteFieldMapping including all possible errors.
+"""
+union DeleteFieldMappingResult = DeleteFieldMappingPayload | FieldMappingNotFound | FieldMappingHasReferences
+
+"""
+Input type of DeployFieldMappings.
+"""
+input DeployFieldMappingsInput {
+    """
+    A unique identifier of a service provider.
+    """
+    providerId: ID!
+    """
+    Deploys only provided list of fields. If not provided then all field mappings are replaced.
+    If provided then all configurations applied after "from" date are updated with provided set of fields.
+    """
+    paths: [String!]
+    """
+    The date when current set of field mappings take effect in the system. If not provided then considered as now.
+    All the configurations after this date are either updated with provided paths or removed if paths are not provided.
+    """
+    from: AWSDateTime
+}
+
+"""
+Field mappings that have been deployed and take effect starting from some date.
+"""
+type DeployedFieldMapping {
+    """
+    The date when current set of field mappings take effect in the system.
+    """
+    from: AWSDateTime!
+    """
+    A list of deployed field mappings.
+    """
+    fieldMappings (
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String
+    ): FieldMappingConnection!
+}
+
+"""
+Return type of DeployFieldMappings.
+"""
+type DeployFieldMappingsPayload {
+    deployedFieldMapping: DeployedFieldMapping!
+}
+
+"""
+Return type of DeployFieldMappings including all possible errors.
+"""
+union DeployFieldMappingsResult = DeployFieldMappingsPayload
+
+"""
+An edge in a connection.
+"""
+type DeployedFieldMappingEdge {
+    """
+    The item at the end of the edge.
+    """
+    node: DeployedFieldMapping!
+    """
+    A cursor for use in pagination.
+    """
+    cursor: String!
+}
+
+"""
+The connection type for DeployedFieldMapping.
+"""
+type DeployedFieldMappingConnection {
+    """
+    List of nodes in the connection.
+    """
+    edges: [DeployedFieldMappingEdge!]
+    """
+    Information about pagination in the connection.
+    """
+    pageInfo: PageInfo!
+}
 
 """
 The root query for implementing GraphQL mutations.
@@ -2912,6 +3284,50 @@ type Mutation {
         input: UpdateSettingsInput!
     ): UpdateSettingsResult!
     @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Creates a field mapping.
+    """
+    createFieldMapping(
+        """
+        Parameters for CreateFieldMapping.
+        """
+        input: CreateFieldMappingInput!
+    ): CreateFieldMappingResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Updates a field mapping.
+    """
+    updateFieldMapping(
+        """
+        Parameters for UpdateFieldMapping.
+        """
+        input: UpdateFieldMappingInput!
+    ): UpdateFieldMappingResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Deletes a field mapping.
+    """
+    deleteFieldMapping(
+        """
+        Parameters for DeleteFieldMapping.
+        """
+        input: DeleteFieldMappingInput!
+    ): DeleteFieldMappingResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Deploys all the field mappings.
+    """
+    deployFieldMappings(
+        """
+        Parameters for DeployFieldMappings.
+        """
+        input: DeployFieldMappingsInput!
+    ): DeployFieldMappingsResult!
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
 }
 
 """
@@ -3113,6 +3529,44 @@ type Query {
         """
         providerId: ID!
     ): SettingsResult
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Gets not deployed field mappings for a provider.
+    """
+    getFieldMappings(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String
+    ): FieldMappingConnection
+    @aws_auth(cognito_groups: ["Configuration_Admin"])
+
+    """
+    Gets deployed field mappings for a provider sorted by when they will be applied.
+    """
+    getDeployedFieldMappings(
+        """
+        Service provider ID.
+        """
+        providerId: ID!,
+        """
+        Returns the first _n_ elements from the list.
+        """
+        first: Int!,
+        """
+        Returns the elements in the list that come after the specified cursor.
+        """
+        after: String
+    ): DeployedFieldMappingConnection
     @aws_auth(cognito_groups: ["Configuration_Admin"])
 }
 
